@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de GPF - Modo Real x86</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Simulador de GPF (General Protection Fault) - Modo Real x86</h1>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="csBase">Endereço base do segmento CS (hexadecimal):</label>
+                <input type="text" id="csBase" placeholder="Ex: 3000" maxlength="4"/>
+                <small>Valores válidos: 0000 a FFFF</small>
+            </div>
+
+            <div class="input-group">
+                <label for="sourceSegment">Segmento de origem (que causará GPF):</label>
+                <select id="sourceSegment">
+                    <option value="cs">CS (Código)</option>
+                    <option value="ds">DS (Dados)</option>
+                    <option value="es">ES (Extra)</option>
+                    <option value="ss">SS (Pilha)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="sourceSegment">Segmento Alvo (que ocorrerá o GPF):</label>
+                <select id="sourceSegment">
+                    <option value="ss">SS (Pilha)</option>
+                    <option value="es">ES (Extra)</option>
+                    <option value="ds">DS (Dados)</option>
+                    <option value="cs">CS (Código)</option>
+                </select>
+            </div>
+             <button onclick="runSimulation()">Simular GPF</button>
+            <button onclick="clearResults()" style="background-color: #95a5a6;">Limpar</button>
+        </div>
+    </div>
+</body>
+</html>
