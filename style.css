@@ -49,3 +49,14 @@ button {
  button:hover {
     background-color: #2980b9;
 }
+
+.input-section {
+    background-color: #ecf0f1;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
