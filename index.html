@@ -11,7 +11,7 @@
     <div class="container">
         <h1>Simulador de GPF (General Protection Fault) - Modo Real x86</h1>
 
-        <div class="input-section">
+        <section class="input-section">
             <div class="input-group">
                 <label for="csBase">Endereço base do segmento CS (hexadecimal):</label>
                 <input type="text" id="csBase" placeholder="Ex: 3000" maxlength="4"/>
@@ -39,7 +39,30 @@
             </div>
              <button onclick="runSimulation()">Simular GPF</button>
             <button onclick="clearResults()" style="background-color: #95a5a6;">Limpar</button>
-        </div>
+        </section>
+
+        <section id="results"  class="results">
+            <div id="gpfstatus"></div>
+
+            <div class="section">
+                <div class="section-header">Cálculos Realizados</div>
+                <div class="section-content" id="calculations"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Mapeamento de memória RAM</div>
+                <div class="section-content">
+                    <p><strong>Espaço de endereçamento:</strong> 00000 a FFFFF (1MB)</p>
+                    <div id="memoryMap" class="memory-map"></div>
+                </div>
+            </div>
+
+              <div class="section">
+                <div class="section-header">Detalhes da Simulação</div>
+                <div class="section-content" id="simulationDetails"></div>
+            </div>
+
+        </section>
     </div>
 </body>
 </html>
