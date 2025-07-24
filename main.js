@@ -65,14 +65,12 @@ function validarEntradas() {
 
 // Função principal que será chamada pelo botão
 function runSimulation() {
-    const validacao = validarEntradas();
+     const { csBase, sourceSegment, targetSegment } = validarEntradas();
     
-    if (validacao) {
-        console.log("Validações OK!");
-        console.log("CS Base:", validacao.csBase);
-        console.log("Segmento Origem:", validacao.sourceSegment);
-        console.log("Segmento Alvo:", validacao.targetSegment);
-        console.log("Endereço Máximo:", validacao.enderecoMaximo);
+    if (csBase && sourceSegment && targetSegment) {
+        console.log("CS Base:", csBase);
+        console.log("Segmento Origem:", sourceSegment);
+        console.log("Segmento Alvo:", targetSegment);
         
         // Aqui você pode continuar com outras operações
         document.getElementById('results').style.display = 'block';
