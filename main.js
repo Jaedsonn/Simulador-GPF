@@ -4,6 +4,16 @@ constructor(){
     this.MEMORY_SIZE = 0x100000; 
     this.DEZ = 0x10; // pra calcular o endereço base e outros coisas, não deixa no hardcode!
 }
+calcularBaseSeletor(seletor){
+    return seletor * this.DEZ;
+}
+
+calcularEnderecoFisico(endBaseSegmento, offset){
+    return endBaseSegmento + offset;
+}
+calcularHexadecimal(endSegmento){
+    return parseInt(endSegmento, 16);
+}
 
 initializeCompactSegments(csBase, sourceSegment, targetSegment) {
     this.initializeSegments(csBase);
