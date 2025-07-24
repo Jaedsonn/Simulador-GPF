@@ -78,6 +78,17 @@ class Simulador {
 
     simulate(csBase, sourceSegment, targetSegment) {
         this.calculations = [];
+        
+        const segmentOrder = ["CS", "SS", "DS", "ES"];
+        const sourceIndex = segmentOrder.indexOf(sourceSegment);
+        const targetIndex = segmentOrder.indexOf(targetSegment);
+
+        // Verifica se os segmentos são adjacentes
+        if (Math.abs(sourceIndex - targetIndex) !== 1) {
+            alert(`GPF inválido: O segmento ${sourceSegment} só pode invadir segmentos adjacentes. O segmento ${targetSegment} não é adjacente.`);
+            return null; // Interrompe a simulação
+        }
+
         this.initializeCompactSegments(csBase, sourceSegment, targetSegment);
         let gpfOffset = this.generateGPFOffset(sourceSegment, targetSegment);
         let physicalAddress = this.calcularEnderecoFisico(this.segments[sourceSegment].base, gpfOffset);
@@ -109,6 +120,45 @@ class Simulador {
             calculations: this.calculations,
             csBaseHex: this.toHex(csBase, 4)
         };
+    }
+
+    generateMemoryVisual() {
+        // Ordena os segmentos na ordem: ES, DS, SS, CS (de cima para baixo)
+        const segmentOrder = ['ES', 'DS', 'SS', 'CS'];
+        
+        // Calcula o tamanho total de todos os segmentos
+        let totalSize = 0;
+        for (let segmentName of segmentOrder) {
+            const segment = this.segments[segmentName];
+            totalSize += (segment.limit - segment.base + 1);
+        }
+        
+        // Altura base total para a representação visual (em pixels)
+        const totalHeight = 400;
+        
+        let visualHtml = '';
+        
+        for (let segmentName of segmentOrder) {
+            const segment = this.segments[segmentName];
+            const segmentSize = segment.limit - segment.base + 1;
+            const startAddress = this.toHex(segment.base);
+            const endAddress = this.toHex(segment.limit);
+            
+            // Calcula a altura proporcional do segmento
+            const proportionalHeight = Math.max(60, (segmentSize / totalSize) * totalHeight);
+            
+            visualHtml += `
+                <div class="memory-segment ${segmentName.toLowerCase()}-segment" 
+                     data-segment="${segmentName}" 
+                     style="height: ${proportionalHeight}px;">
+                    <div class="segment-label">${segmentName}</div>
+                    <div class="segment-address">${startAddress}h - ${endAddress}h</div>
+                    <div class="segment-size">${(segmentSize / 1024).toFixed(0)} KB</div>
+                </div>
+            `;
+        }
+        
+        return visualHtml;
     }
 
     generateMemoryMap() {
@@ -165,18 +215,35 @@ function runSimulation() {
         const simulador = new Simulador();
         try {
             const simResult = simulador.simulate(csBase, sourceSegment, targetSegment);
-            document.getElementById('results').style.display = 'block';
-            const gpfStatusDiv = document.getElementById('gpfStatus');
+            
+            if (!simResult) { // Se simResult for null, a simulação foi interrompida por GPF inválido
+                document.getElementById("results").style.display = "none";
+                return;
+            }
+
+            document.getElementById("results").style.display = "block";
+            const gpfStatusDiv = document.getElementById("gpfStatus");
             if (simResult.gpf.hasGPF) {
                 gpfStatusDiv.innerHTML = `<div class="gpf-alert">⚠️ GPF DETECTADO! ⚠️<br>Segmento ${simResult.sourceSegment} invadiu o segmento ${simResult.gpf.targetSegment}</div>`;
             } else {
                 gpfStatusDiv.innerHTML = `<div class="gpf-alert no-gpf">✅ Nenhum GPF detectado</div>`;
             }
-            document.getElementById('calculations').innerHTML = simResult.calculations.map(calc => 
+            // Gera a representação visual da memória
+            document.getElementById("memoryVisual").innerHTML = simulador.generateMemoryVisual();
+            
+            // Destaca o segmento que foi invadido
+            if (simResult.gpf.hasGPF && simResult.gpf.targetSegment !== "FORA_DOS_SEGMENTOS") {
+                const targetElement = document.querySelector(`[data-segment="${simResult.gpf.targetSegment}"]`);
+                if (targetElement) {
+                    targetElement.classList.add("memory-highlight");
+                }
+            }
+
+            document.getElementById("calculations").innerHTML = simResult.calculations.map(calc => 
                 `<div class="calculation-step"><strong>Passo ${calc.step}:</strong> ${calc.description}</div>`
-            ).join('');
+            ).join("");
             const memoryMap = simulador.generateMemoryMap();
-            document.getElementById('memoryMap').innerHTML = memoryMap.map(segment => 
+            document.getElementById("memoryMap").innerHTML = memoryMap.map(segment => 
                 `<div class="segment-block">
                     <div class="segment-name">${segment.name} - ${segment.description}</div>
                     <div class="segment-info">
@@ -185,8 +252,8 @@ function runSimulation() {
                         Tamanho: ${(segment.size / 1024).toFixed(0)} KB
                     </div>
                 </div>`
-            ).join('');
-            document.getElementById('simulationDetails').innerHTML = 
+            ).join("");
+            document.getElementById("simulationDetails").innerHTML = 
                 `<p><strong>Endereço base CS:</strong> <span class="hex-value">${simResult.csBaseHex}h</span></p>
                  <p><strong>Segmento de origem:</strong> ${simResult.sourceSegment}</p>
                  <p><strong>Offset gerado:</strong> <span class="hex-value">${simulador.toHex(simResult.offset, 4)}h</span></p>
@@ -194,7 +261,7 @@ function runSimulation() {
                  <p><strong>Segmento alvo invadido:</strong> ${simResult.gpf.targetSegment}</p>
                  <p><strong>Fórmula utilizada:</strong> Endereço Físico = (Seletor × 10h) + Offset</p>`;
         } catch (error) {
-            alert('Ocorreu um erro na simulação: ' + error.message);
+            alert("Ocorreu um erro na simulação: " + error.message);
         }
     }
 }
@@ -207,6 +274,7 @@ function clearResults() {
     document.getElementById('gpfStatus').innerHTML = '';
     document.getElementById('calculations').innerHTML = '';
     document.getElementById('memoryMap').innerHTML = '';
+    document.getElementById('memoryVisual').innerHTML = '';
     document.getElementById('simulationDetails').innerHTML = '';
 }
 
