@@ -5,64 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de GPF - Modo Real x86</title>
     <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
+    <script src="main.js" defer></script>
 </head>
 <body>
     <div class="container">
         <h1>Simulador de GPF (General Protection Fault) - Modo Real x86</h1>
-
-        <section class="input-section">
+        
+        <div class="input-section">
             <div class="input-group">
-                <label for="csBase">Endereço base do segmento CS (hexadecimal):</label>
-                <input type="text" id="csBase" placeholder="Ex: 3000" maxlength="4"/>
+                <label for="csBase">Endereço Base do Segmento CS (hexadecimal):</label>
+                <input type="text" id="csBase" placeholder="Ex: 3000" maxlength="4">
                 <small>Valores válidos: 0000 a FFFF</small>
             </div>
-
+            
             <div class="input-group">
-                <label for="sourceSegment">Segmento de origem (que causará GPF):</label>
+                <label for="sourceSegment">Segmento de Origem (que causará GPF):</label>
                 <select id="sourceSegment">
-                    <option value="cs">CS (Código)</option>
-                    <option value="ds">DS (Dados)</option>
-                    <option value="es">ES (Extra)</option>
-                    <option value="ss">SS (Pilha)</option>
+                    <option value="CS">CS (Código)</option>
+                    <option value="SS">SS (Pilha)</option>
+                    <option value="DS">DS (Dados)</option>
+                    <option value="ES">ES (Extra)</option>
                 </select>
             </div>
-
+            
             <div class="input-group">
-                <label for="sourceSegment">Segmento Alvo (que ocorrerá o GPF):</label>
+                <label for="targetSegment">Segmento Alvo (onde ocorrerá a invasão):</label>
                 <select id="targetSegment">
-                    <option value="ss">SS (Pilha)</option>
-                    <option value="es">ES (Extra)</option>
-                    <option value="ds">DS (Dados)</option>
-                    <option value="cs">CS (Código)</option>
+                    <option value="SS">SS (Pilha)</option>
+                    <option value="DS">DS (Dados)</option>
+                    <option value="ES">ES (Extra)</option>
+                    <option value="CS">CS (Código)</option>
                 </select>
             </div>
-             <button onclick="runSimulation()">Simular GPF</button>
+            
+            <button onclick="runSimulation()">Simular GPF</button>
             <button onclick="clearResults()" style="background-color: #95a5a6;">Limpar</button>
-        </section>
-
-        <section id="results"  class="results">
-            <div id="gpfstatus"></div>
-
+        </div>
+        
+        <div id="results" class="results">
+            <div id="gpfStatus"></div>
+            
             <div class="section">
                 <div class="section-header">Cálculos Realizados</div>
                 <div class="section-content" id="calculations"></div>
             </div>
-
+            
             <div class="section">
-                <div class="section-header">Mapeamento de memória RAM</div>
+                <div class="section-header">Mapeamento da Memória RAM</div>
                 <div class="section-content">
                     <p><strong>Espaço de endereçamento:</strong> 00000 a FFFFF (1MB)</p>
                     <div id="memoryMap" class="memory-map"></div>
                 </div>
             </div>
-
-              <div class="section">
+            
+            <div class="section">
                 <div class="section-header">Detalhes da Simulação</div>
                 <div class="section-content" id="simulationDetails"></div>
             </div>
-
-        </section>
+        </div>
     </div>
 </body>
 </html>

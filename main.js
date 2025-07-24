@@ -2,146 +2,214 @@ class Simulador {
     constructor() {
         this.SEGMENT_SIZE = 0x10000;
         this.MEMORY_SIZE = 0x100000;
-        this.DEZ = 0x10; // para calcular o endereço base e outras coisas, não deixa no hardcode!
-        this.segments = {}; // Initialize segments object
+        this.SHIFT_FACTOR = 0x10;
+        this.segments = {
+            CS: { name: 'Código (CS)', base: 0, limit: 0 },
+            SS: { name: 'Pilha (SS)', base: 0, limit: 0 },
+            DS: { name: 'Dados (DS)', base: 0, limit: 0 },
+            ES: { name: 'Extra (ES)', base: 0, limit: 0 }
+        };
+        this.memoryMap = [];
+        this.calculations = [];
     }
 
     calcularBaseSeletor(seletor) {
-        return seletor * this.DEZ;
+        return seletor * this.SHIFT_FACTOR;
     }
 
     calcularEnderecoFisico(endBaseSegmento, offset) {
         return endBaseSegmento + offset;
     }
 
-    calcularHexadecimal(endSegmento) {
-        return parseInt(endSegmento, 16);
+    toHex(number, padding = 5) {
+        return number.toString(16).toUpperCase().padStart(padding, '0');
     }
 
-    // This method was missing and is crucial for initializeCompactSegments
     initializeSegments(csBase) {
-        // Example initialization for segments
-        // In a real scenario, you'd likely define how segments are structured.
-        // For demonstration, let's assume some common segments exist.
-        // You might want to extend this to dynamically create segments based on need.
-        this.segments = {
-            'CS': { base: this.calcularBaseSeletor(this.calcularHexadecimal(csBase)), limit: this.SEGMENT_SIZE - 1 },
-            'DS': { base: 0, limit: this.SEGMENT_SIZE - 1 }, // Example
-            'ES': { base: 0, limit: this.SEGMENT_SIZE - 1 }, // Example
-            'SS': { base: 0, limit: this.SEGMENT_SIZE - 1 }  // Example
-            // Add other segments as necessary for your simulation
-        };
+        this.segments.CS.base = this.calcularBaseSeletor(csBase);
+        this.segments.CS.limit = this.segments.CS.base + this.SEGMENT_SIZE - 1;
+        let nextAvailable = this.segments.CS.base + this.SEGMENT_SIZE;
+        let ssSelector = Math.floor(nextAvailable / this.SHIFT_FACTOR);
+        this.segments.SS.base = this.calcularBaseSeletor(ssSelector);
+        this.segments.SS.limit = this.segments.SS.base + this.SEGMENT_SIZE - 1;
+        nextAvailable = this.segments.SS.base + this.SEGMENT_SIZE;
+        let dsSelector = Math.floor(nextAvailable / this.SHIFT_FACTOR);
+        this.segments.DS.base = this.calcularBaseSeletor(dsSelector);
+        this.segments.DS.limit = this.segments.DS.base + this.SEGMENT_SIZE - 1;
+        nextAvailable = this.segments.DS.base + this.SEGMENT_SIZE;
+        let esSelector = Math.floor(nextAvailable / this.SHIFT_FACTOR);
+        this.segments.ES.base = this.calcularBaseSeletor(esSelector);
+        this.segments.ES.limit = this.segments.ES.base + this.SEGMENT_SIZE - 1;
     }
 
     initializeCompactSegments(csBase, sourceSegment, targetSegment) {
-        this.initializeSegments(csBase); // Ensure segments are initialized
-
+        this.initializeSegments(csBase);
         let sourceUsedSize = 0x8000;
-
-        // Ensure sourceSegment exists before accessing it
-        if (!this.segments[sourceSegment]) {
-            console.error(`Segmento de origem '${sourceSegment}' não encontrado.`);
-            return;
-        }
-
         this.segments[sourceSegment].limit = this.segments[sourceSegment].base + sourceUsedSize - 1;
-
         let nextAvailable = this.segments[sourceSegment].base + sourceUsedSize;
-
-        // Ensure targetSegment exists or create it
-        if (!this.segments[targetSegment]) {
-            this.segments[targetSegment] = {}; // Create the target segment object if it doesn't exist
-        }
         this.segments[targetSegment].base = nextAvailable;
         this.segments[targetSegment].limit = this.segments[targetSegment].base + this.SEGMENT_SIZE - 1;
+    }
+
+    generateGPFOffset(sourceSegment, targetSegment) {
+        let sourceBase = this.segments[sourceSegment].base;
+        let targetBase = this.segments[targetSegment].base;
+        let offsetToTarget = targetBase - sourceBase;
+        let gpfOffset = offsetToTarget + 0x100;
+        return gpfOffset;
+    }
+
+    detectGPF(sourceSegment, offset) {
+        let sourceBase = this.segments[sourceSegment].base;
+        let physicalAddress = this.calcularEnderecoFisico(sourceBase, offset);
+        if (physicalAddress >= sourceBase && physicalAddress <= this.segments[sourceSegment].limit) {
+            return { hasGPF: false, targetSegment: null };
+        }
+        for (let segName in this.segments) {
+            if (segName !== sourceSegment) {
+                let seg = this.segments[segName];
+                if (physicalAddress >= seg.base && physicalAddress <= seg.limit) {
+                    return { hasGPF: true, targetSegment: segName };
+                }
+            }
+        }
+        return { hasGPF: true, targetSegment: 'FORA_DOS_SEGMENTOS' };
+    }
+
+    simulate(csBase, sourceSegment, targetSegment) {
+        this.calculations = [];
+        this.initializeCompactSegments(csBase, sourceSegment, targetSegment);
+        let gpfOffset = this.generateGPFOffset(sourceSegment, targetSegment);
+        let physicalAddress = this.calcularEnderecoFisico(this.segments[sourceSegment].base, gpfOffset);
+        let gpfResult = this.detectGPF(sourceSegment, gpfOffset);
+        this.calculations.push({
+            step: 1,
+            description: `Endereço base ${sourceSegment} = ${this.toHex(this.segments[sourceSegment].base / this.SHIFT_FACTOR, 4)}h × 10h = ${this.toHex(this.segments[sourceSegment].base)}h`,
+        });
+        this.calculations.push({
+            step: 2,
+            description: `Offset gerado para causar GPF = ${this.toHex(gpfOffset, 4)}h`,
+        });
+        this.calculations.push({
+            step: 3,
+            description: `Endereço Físico = ${this.toHex(this.segments[sourceSegment].base)}h + ${this.toHex(gpfOffset, 4)}h = ${this.toHex(physicalAddress)}h`,
+        });
+        this.calculations.push({
+            step: 4,
+            description: `Verificação: O endereço ${this.toHex(physicalAddress)}h está fora do limite de ${sourceSegment} e dentro do segmento ${gpfResult.targetSegment}.`,
+            value: gpfResult.hasGPF ? 'GPF DETECTADO!' : 'Sem GPF'
+        });
+        return {
+            segments: this.segments,
+            sourceSegment: sourceSegment,
+            targetSegment: targetSegment,
+            offset: gpfOffset,
+            physicalAddress: physicalAddress,
+            gpf: gpfResult,
+            calculations: this.calculations,
+            csBaseHex: this.toHex(csBase, 4)
+        };
+    }
+
+    generateMemoryMap() {
+        let map = [];
+        let sortedSegments = Object.entries(this.segments)
+            .sort((a, b) => a[1].base - b[1].base);
+        for (let [name, segment] of sortedSegments) {
+            map.push({
+                name: name,
+                description: segment.name,
+                start: this.toHex(segment.base),
+                end: this.toHex(segment.limit),
+                size: segment.limit - segment.base + 1
+            });
+        }
+        return map;
     }
 }
 
 function validarEntradas() {
-    // 1. Obter os valores dos inputs
     const inputCs = document.getElementById('csBase').value.trim().toUpperCase();
     const sourceSegment = document.getElementById('sourceSegment').value;
     const targetSegment = document.getElementById('targetSegment').value;
 
-    // 2. Verificar se o CS foi digitado
     if (!inputCs) {
         alert("Por favor, insira o endereço base de CS!");
         return false;
     }
-
-   
-    if (!/^[0-9A-F]{4}$/.test(inputCs)) {
-        alert("CS deve ser um valor hexadecimal de 4 dígitos (0000-FFFF)");
+    if (!/^[0-9A-F]{1,4}$/.test(inputCs)) {
+        alert("CS deve ser um valor hexadecimal de até 4 dígitos (0000-FFFF).");
         return false;
     }
-
-   
-    const csBaseHex = inputCs.padStart(4, '0'); 
-
-
     if (sourceSegment === targetSegment) {
         alert("O segmento fonte não pode ser o mesmo que o segmento alvo!");
         return false;
     }
-
- 
-    const csBaseInt = parseInt(csBaseHex, 16);
-    const enderecoMaximo = (csBaseInt * 0x10) + 0xFFFF;
-
+    const csBaseInt = parseInt(inputCs, 16);
+    const enderecoMaximo = (csBaseInt * 0x10) + (4 * 0x10000) - 1;
     if (enderecoMaximo > 0xFFFFF) {
-        alert("CS ultrapassa o limite de 1MB de memória!");
+        alert("A combinação de CS e os segmentos seguintes ultrapassa o limite de 1MB de memória! Tente um valor menor para CS (ex: 8000).");
         return false;
     }
-
- 
     return {
-        csBase: csBaseHex,
+        csBase: csBaseInt,
         sourceSegment,
         targetSegment,
-        enderecoMaximo: enderecoMaximo.toString(16).toUpperCase()
     };
 }
 
-
 function runSimulation() {
-
-    clearResults();
-
-    const result = validarEntradas();
-
-    if (result) {
-        const { csBase, sourceSegment, targetSegment, enderecoMaximo } = result;
-        console.log("CS Base:", csBase);
-        console.log("Segmento Origem:", sourceSegment);
-        console.log("Segmento Alvo:", targetSegment);
-        console.log("Endereço Máximo Calculado:", enderecoMaximo);
-
+    const entradas = validarEntradas();
+    if (entradas) {
+        const { csBase, sourceSegment, targetSegment } = entradas;
         const simulador = new Simulador();
-
-       
-        simulador.initializeCompactSegments(csBase, sourceSegment, targetSegment);
-
-     
-        document.getElementById('results').style.display = 'block';
-
-        // Example of displaying some results:
-        document.getElementById('displayCsBase').textContent = `CS Base: ${csBase}`;
-        document.getElementById('displaySourceSegment').textContent = `Segmento Origem: ${sourceSegment}`;
-        document.getElementById('displayTargetSegment').textContent = `Segmento Alvo: ${targetSegment}`;
-        document.getElementById('displayMaxAddress').textContent = `Endereço Máximo: ${enderecoMaximo}`;
+        try {
+            const simResult = simulador.simulate(csBase, sourceSegment, targetSegment);
+            document.getElementById('results').style.display = 'block';
+            const gpfStatusDiv = document.getElementById('gpfStatus');
+            if (simResult.gpf.hasGPF) {
+                gpfStatusDiv.innerHTML = `<div class="gpf-alert">⚠️ GPF DETECTADO! ⚠️<br>Segmento ${simResult.sourceSegment} invadiu o segmento ${simResult.gpf.targetSegment}</div>`;
+            } else {
+                gpfStatusDiv.innerHTML = `<div class="gpf-alert no-gpf">✅ Nenhum GPF detectado</div>`;
+            }
+            document.getElementById('calculations').innerHTML = simResult.calculations.map(calc => 
+                `<div class="calculation-step"><strong>Passo ${calc.step}:</strong> ${calc.description}</div>`
+            ).join('');
+            const memoryMap = simulador.generateMemoryMap();
+            document.getElementById('memoryMap').innerHTML = memoryMap.map(segment => 
+                `<div class="segment-block">
+                    <div class="segment-name">${segment.name} - ${segment.description}</div>
+                    <div class="segment-info">
+                        Início: <span class="hex-value">${segment.start}h</span><br>
+                        Fim: <span class="hex-value">${segment.end}h</span><br>
+                        Tamanho: ${(segment.size / 1024).toFixed(0)} KB
+                    </div>
+                </div>`
+            ).join('');
+            document.getElementById('simulationDetails').innerHTML = 
+                `<p><strong>Endereço base CS:</strong> <span class="hex-value">${simResult.csBaseHex}h</span></p>
+                 <p><strong>Segmento de origem:</strong> ${simResult.sourceSegment}</p>
+                 <p><strong>Offset gerado:</strong> <span class="hex-value">${simulador.toHex(simResult.offset, 4)}h</span></p>
+                 <p><strong>Endereço físico resultante:</strong> <span class="hex-value">${simulador.toHex(simResult.physicalAddress)}h</span></p>
+                 <p><strong>Segmento alvo invadido:</strong> ${simResult.gpf.targetSegment}</p>
+                 <p><strong>Fórmula utilizada:</strong> Endereço Físico = (Seletor × 10h) + Offset</p>`;
+        } catch (error) {
+            alert('Ocorreu um erro na simulação: ' + error.message);
+        }
     }
 }
 
-// Função para limpar os resultados
 function clearResults() {
     document.getElementById('results').style.display = 'none';
     document.getElementById('csBase').value = '';
-    // Clear any displayed results if they exist
-    document.getElementById('displayCsBase').textContent = '';
-    document.getElementById('displaySourceSegment').textContent = '';
-    document.getElementById('displayTargetSegment').textContent = '';
-    document.getElementById('displayMaxAddress').textContent = '';
+    document.getElementById('sourceSegment').selectedIndex = 0;
+    document.getElementById('targetSegment').selectedIndex = 1;
+    document.getElementById('gpfStatus').innerHTML = '';
+    document.getElementById('calculations').innerHTML = '';
+    document.getElementById('memoryMap').innerHTML = '';
+    document.getElementById('simulationDetails').innerHTML = '';
 }
 
-
-*/
+document.getElementById('csBase').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+});
